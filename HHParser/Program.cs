@@ -2,8 +2,26 @@
 using HHParser.HHClasses;
 using Newtonsoft.Json;
 
-var addresses = (await GetAllVacancy()).Select(x => x.alternate_url);
+const string baseName = "VacancyIds.json";
+List<int> previousIds;
+if (File.Exists(baseName))
+{
+    var oldJson = await File.ReadAllTextAsync(baseName);
+    previousIds = JsonConvert.DeserializeObject<List<int>>(oldJson);
+    if (previousIds == null)
+        throw new Exception("Cannot parse previous ids");
+}
+else
+{
+    previousIds = new List<int>();
+}
+
+var newVacancies = (await GetAllVacancy()).Where(x => !previousIds.Contains(x.id)).ToList();
+var addresses = newVacancies.Select(x => x.alternate_url);
 Console.WriteLine(JsonConvert.SerializeObject(addresses));
+previousIds.AddRange(newVacancies.Select(x => x.id));
+var newJson = JsonConvert.SerializeObject(previousIds);
+await File.WriteAllTextAsync(baseName, newJson);
 
 async Task<IEnumerable<Vacancy>> GetAllVacancy()
 {
